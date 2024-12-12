@@ -1,6 +1,46 @@
-// const Datos = require('../models/datos')
-// const xlsx = require('xlsx');
-const Cliente = require('../models/cliente');
+const path = require('path');
+const Cliente = require('../models/ArchivoModel');
+const multer = require('multer');
+const Encuesta = require('../models/encuesta');  
+const XLSX = require('xlsx');
+const Archivo = require('../models/ArchivoModel');
+
+exports.getEncuestas = async (req, res) => {
+  try {
+    const { documento, filtro } = req.query;
+
+    if (!documento || !filtro) {
+      return res.status(400).json({ message: 'Se requiere el documento y el filtro' });
+    }
+
+    const encuestas = await Encuesta.find({ filtro: filtro })
+      .populate('clienteId')
+
+    const encuestasFiltradas = encuestas.filter(encuesta => encuesta.clienteId.documento === documento);
+
+    console.log('Encuestas filtradas:', encuestasFiltradas);
+    res.json(encuestasFiltradas);
+
+  } catch (error) {
+    console.error('Error al obtener las encuestas:', error);
+    res.status(500).json({ message: 'Error al obtener las encuestas' });
+  }
+};
+exports.getEncuestasFiltro = async (req, res) => {
+  try {
+    const { filtro } = req.query;
+
+    const encuestas = await Encuesta.find({ filtro: filtro })
+      .populate('clienteId')
+
+    res.json(encuestas);
+
+  } catch (error) {
+    console.error('Error al obtener las encuestas:', error);
+    res.status(500).json({ message: 'Error al obtener las encuestas' });
+  }
+};
+
 
 exports.getClientes = async (req, res) => {
   try {
@@ -21,81 +61,76 @@ exports.getClientes = async (req, res) => {
   }
 };
 
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/');
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));  
+  }
+});
 
+const upload = multer({ storage: storage });
 
-// function leerExcel(req,res) {
-//     console.log('Archivo recibido:', req.file);
+exports.uploadFile = [
+  upload.single('archivo'),
+  async (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No se subió ningún archivo' });
+    }
 
-//     if (!req.file) {
-//         return res.status(400).json({ error: 'No se recibió un archivo Excel.' });
-//       }
+    try {
+      const filePath = req.file.path;
+      const workbook = XLSX.readFile(filePath);
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const rawData = XLSX.utils.sheet_to_json(worksheet);
 
-//     const archivoExcelPath = req.file.path;
-//     const workbook = xlsx.readFile(archivoExcelPath);
-//     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-//     const jsonData = xlsx.utils.sheet_to_json(sheet);
+      const transformedData = rawData.map(item => ({
+        nombre: item['Nombre'], 
+        tipodoc: item['tipodoc'],
+        documento: item['documento'],
+        telefono: item['telefono'],
+        telAjustado: item['Tel. Ajustado'],
+        email: item['email'],
+        fechaServicio: new Date(item['Fecha Servicio']),
+        profesional: item['Profesional'],
+        servicio: item['Servicio'],
+        filtro: item['filtro'] || '',
+      }));
+      await Archivo.insertMany(transformedData);
+      console.log('Datos guardados en la base de datos');
+      res.send('Archivo procesado y datos guardados exitosamente');
+    } catch (err) {
+      console.error('Error al procesar y guardar los datos:', err);
+      res.status(500).send('Error al guardar los datos en la base de datos');
+    }
+  }
+];
 
-//     console.log('Datos leídos del Excel:', jsonData);
+exports.postEncuesta = async (req, res) => {
+  const { clienteId, ...formularioData } = req.body;
 
-//     const datosParaGuardar = jsonData.map(row => ({
-//         nombre: row['Nombre'],
-//         telefonoAjustado: row['Tel. Ajustado'],
-//         fechaServicio: new Date(row['Fecha Servicio']),
-//         profesional: row['Profesional'],
-//         servicio: row['Servicio']
-//       }));
+  try {
+    let encuesta = await Encuesta.findOne({ clienteId });
 
-//       guardarDatosEnMongo(datosParaGuardar, res);
-
-// }
-
-
-// function leerExcel(req,res) {
-//     const uploadsFolder = path.join(__dirname, 'uploads');
-  
-//     fs.readdir(uploadsFolder, (err, files) => {
-//       if (err) {
-//         return res.status(500).json({ error: 'Error al leer la carpeta' });
-//       }
-  
-//       const excelFiles = files.filter(file => file.endsWith('.xlsx'));
-  
-//       if (excelFiles.length === 0) {
-//         return res.status(404).json({ message: 'no se encontraron archivos Excel en la carpeta.' });
-//       }
-  
-//       const archivoExcelPath = path.join(uploadsFolder, excelFiles[0]);
-  
-//       const workbook = xlsx.readFile(archivoExcelPath);
+    if (encuesta) {
       
-//       const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      
-//       const jsonData = xlsx.utils.sheet_to_json(sheet);
-  
-//       console.log(jsonData);
-      
-//       const datosParaGuardar = jsonData.map(row => ({
-//         nombre: row['Nombre'],   
-//         telefonoAjustado: row['Tel. Ajustado'],
-//         fechaServicio: new Date(row['Fecha Servicio']),
-//         profesional: row['Profesional'],
-//         servicio: row['Servicio']
-//       }));
-  
-//       guardarDatosEnMongo(datosParaGuardar, res);
-//     });
-//   }
-  
-//   function guardarDatosEnMongo(datos, res) {
-//     Datos.insertMany(datos)
-//       .then(() => {
-//         res.status(200).json({ message: "los datos fueron guardados correctamente." })
-//       })
-//       .catch(err => {
-//         res.status(500).json({ error: "error al guardar los datos "})
-//       });
-//   }
-
-  
-// module.exports = { leerExcel}
-  
+      encuesta = await Encuesta.findOneAndUpdate(
+        { clienteId },
+        { $set: formularioData }, 
+        { new: true } 
+      );
+      return res.status(200).json({ message: 'Encuesta actualizada', encuesta });
+    } else {
+    
+      encuesta = new Encuesta({ clienteId, ...formularioData });
+      await encuesta.save();
+      return res.status(201).json({ message: 'Encuesta creada', encuesta });
+    }
+  } catch (error) {
+    console.error('Error al procesar la encuesta:', error.message);
+    return res.status(500).json({ message: 'Error al procesar la encuesta', error: error.message });
+  }
+};

@@ -1,4 +1,4 @@
-const app = require('./server');  // Aquí solo importas el app
+const app = require('./server'); 
 
 const { createServer } = require('node:http');
 const server = createServer(app);

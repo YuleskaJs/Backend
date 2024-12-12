@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const ClienteSchema = new mongoose.Schema({
     
   nombre: { type: String, required: true },
-  telefono: { type: String, required: true },
+  telAjustado: { type: String, required: true },
   fecha_servicio: { type: Date, required: true },
   profesional: { type: String, required: true },
   servicio: { type: String, required: true },

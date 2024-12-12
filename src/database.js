@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-mongoose.connect('mongodb+srv://fiumi:GTuxjr7wGvMBWcis@fiumi.2njal.mongodb.net/sistemaUsuarios')
+mongoose.connect('mongodb+srv://fiumi:GTuxjr7wGvMBWcis@fiumi.2njal.mongodb.net/excelSubido')
   .then(() => {
     console.log('Conectado a MongoDB');
   })
