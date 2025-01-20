@@ -1,18 +1,35 @@
 const { Router } = require('express');
-const router = Router();
-const { getClientes, getEncuestasFiltro, postEncuesta, getEncuestas, uploadFile } = require('../controllers/datos.controller');
+const { 
+  getClientes, 
+  getEncuestasFiltro, 
+  login, 
+  postEncuesta, 
+  getEncuestas, 
+  uploadFile, 
+  limpiarBase, 
+  exportar 
+} = require('../controllers/datos.controller');
+const { addUser, deleteUser, listUsers, updateUser } = require('../controllers/datos.controller');
 
-router.get("/api/clientes", (req, res, next) => {
-  console.log('Ruta /api/clientes alcanzada');
-  next();
-}, getClientes);
+const router = Router();
+
+router.get('/exportar', exportar);
+
+router.get('/api/clientes', getClientes);
+
+router.post('/api/login', login);
 
 router.post('/nuevaEncuesta', postEncuesta);
-
 router.get('/encuestas', getEncuestas);
-
 router.get('/encuestasFiltro', getEncuestasFiltro);
 
 router.post('/upload', uploadFile);
+
+router.delete('/limpiar-base', limpiarBase);
+
+router.post('/users', addUser);
+router.put('/users/:email', updateUser);
+router.delete('/users/:email', deleteUser);
+router.get('/users', listUsers);
 
 module.exports = router;
