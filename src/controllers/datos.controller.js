@@ -104,16 +104,18 @@ exports.listUsers = async (req, res) => {
 
 exports.login = async (req, res) => {
   const { email, password } = req.body;
-
+  const secretKey = "U0XKfD9JgUdEL81yHGLgKzi5zmIHZqXl"
   try {
     const user = await User.findOne({ email, password });
     if (user) {
-      res.status(200).json({ success: true, message: 'Inicio de sesión exitoso', user: user });
+      const token = jwt.sign({ userId: user._id }, secretKey);
+      
+      res.status(200).json({ success: true, message: 'Inicio de sesión exitoso', user: user, token: token, role: user.role });
     } else {
       res.status(401).json({ success: false, message: 'Credenciales incorrectas' });
     }
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Error del servidor' });
+    res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
   }
 };
 
